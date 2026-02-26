@@ -86,6 +86,22 @@ def get_stock_detail(
         .first()
     )
 
+    # Auto-fetch PER/PBR/EPS from Naver if missing
+    if not latest_fundamentals or (
+        latest_fundamentals.per is None
+        and latest_fundamentals.pbr is None
+        and latest_fundamentals.eps is None
+    ):
+        from app.services.market_data import fetch_fundamentals_naver
+
+        fetch_fundamentals_naver(db, stock.ticker)
+        latest_fundamentals = (
+            db.query(MarketFundamentals)
+            .filter(MarketFundamentals.ticker == stock.ticker)
+            .order_by(desc(MarketFundamentals.date))
+            .first()
+        )
+
     fundamentals_info: FundamentalsInfo | None = None
     if latest_fundamentals:
         fundamentals_info = FundamentalsInfo(

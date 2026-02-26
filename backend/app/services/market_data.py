@@ -1,10 +1,12 @@
 """Market data service using FinanceDataReader for KRX stock data collection."""
 
 import logging
+import re
 import time
 from datetime import date, datetime, timedelta
 
 import FinanceDataReader as fdr
+import requests
 from sqlalchemy.orm import Session
 
 from app.models.stock import DailyPrice, MarketFundamentals, Stock
@@ -87,27 +89,18 @@ def sync_stock_list(db: Session, market: str = "ALL") -> int:
                 else:
                     db.add(DailyPrice(ticker=ticker, date=today, **price_data))
 
-            # Store market cap and fundamentals
+            # Store market cap (PER/PBR/EPS are fetched separately from Naver)
             marcap = int(row.get("Marcap", 0)) if row.get("Marcap") else None
             if marcap and marcap > 0:
-                fund_data = {
-                    "market_cap": marcap,
-                    "per": float(row["PER"]) if row.get("PER") and row["PER"] != 0 else None,
-                    "pbr": float(row["PBR"]) if row.get("PBR") and row["PBR"] != 0 else None,
-                    "eps": int(row["EPS"]) if row.get("EPS") and row["EPS"] != 0 else None,
-                    "div_yield": float(row["DIV"]) if row.get("DIV") and row["DIV"] != 0 else None,
-                }
                 existing_fund = (
                     db.query(MarketFundamentals)
                     .filter(MarketFundamentals.ticker == ticker, MarketFundamentals.date == today)
                     .first()
                 )
                 if existing_fund:
-                    for k, v in fund_data.items():
-                        if v is not None:
-                            setattr(existing_fund, k, v)
+                    existing_fund.market_cap = marcap
                 else:
-                    db.add(MarketFundamentals(ticker=ticker, date=today, **fund_data))
+                    db.add(MarketFundamentals(ticker=ticker, date=today, market_cap=marcap))
 
             count += 1
 
@@ -381,3 +374,119 @@ def backfill_prices(db: Session, start_date: date, end_date: date, market: str =
         f"{results['records_inserted']} records"
     )
     return results
+
+
+def fetch_fundamentals_naver(db: Session, ticker: str) -> dict | None:
+    """Fetch PER/PBR/EPS/BPS/배당금 from Naver Finance API and save to DB.
+
+    Returns:
+        Dict with fundamental data, or None on failure.
+    """
+    url = f"https://m.stock.naver.com/api/stock/{ticker}/finance/annual"
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://m.stock.naver.com/",
+    }
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:
+        logger.debug(f"Failed to fetch Naver fundamentals for {ticker}: {e}")
+        return None
+
+    rows = data.get("financeInfo", {}).get("rowList", [])
+    if not rows:
+        return None
+
+    def _parse_number(value_str: str) -> float | None:
+        """Parse a Korean-formatted number string like '33.21' or '6,564'."""
+        if not value_str or value_str == "-":
+            return None
+        cleaned = re.sub(r"[^\d.\-]", "", value_str)
+        if not cleaned:
+            return None
+        try:
+            return float(cleaned)
+        except ValueError:
+            return None
+
+    # Find the latest non-consensus column key
+    tr_titles = data.get("financeInfo", {}).get("trTitleList", [])
+    latest_key = None
+    for tr in reversed(tr_titles):
+        if tr.get("isConsensus") == "N":
+            latest_key = tr.get("key")
+            break
+
+    if not latest_key:
+        return None
+
+    # Extract values by row title
+    values = {}
+    for row in rows:
+        title = row.get("title", "")
+        col_data = row.get("columns", {}).get(latest_key, {})
+        val = _parse_number(col_data.get("value", ""))
+        if val is not None:
+            values[title] = val
+
+    per = values.get("PER")
+    pbr = values.get("PBR")
+    eps = int(values["EPS"]) if "EPS" in values else None
+    bps = int(values["BPS"]) if "BPS" in values else None
+    dps = int(values["주당배당금"]) if "주당배당금" in values else None
+
+    if not any([per, pbr, eps]):
+        return None
+
+    # Calculate div_yield from dps and latest close price
+    div_yield = None
+    if dps and dps > 0:
+        latest_price = (
+            db.query(DailyPrice)
+            .filter(DailyPrice.ticker == ticker)
+            .order_by(DailyPrice.date.desc())
+            .first()
+        )
+        if latest_price and latest_price.close and latest_price.close > 0:
+            div_yield = round(dps / latest_price.close * 100, 2)
+
+    today = date.today()
+    fund_data = {
+        "per": per,
+        "pbr": pbr,
+        "eps": eps,
+        "bps": bps,
+        "dps": dps,
+        "div_yield": div_yield,
+    }
+
+    existing = (
+        db.query(MarketFundamentals)
+        .filter(MarketFundamentals.ticker == ticker, MarketFundamentals.date == today)
+        .first()
+    )
+    if existing:
+        for k, v in fund_data.items():
+            if v is not None:
+                setattr(existing, k, v)
+    else:
+        # Check if there's any recent record we can update instead
+        recent = (
+            db.query(MarketFundamentals)
+            .filter(MarketFundamentals.ticker == ticker)
+            .order_by(MarketFundamentals.date.desc())
+            .first()
+        )
+        if recent:
+            for k, v in fund_data.items():
+                if v is not None:
+                    setattr(recent, k, v)
+        else:
+            db.add(MarketFundamentals(ticker=ticker, date=today, **fund_data))
+
+    db.commit()
+    logger.info(f"Fetched Naver fundamentals for {ticker}: PER={per}, PBR={pbr}, EPS={eps}")
+    return fund_data
