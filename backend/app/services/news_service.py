@@ -116,6 +116,36 @@ def fetch_news_for_ticker(
     return new_articles
 
 
+def fetch_news_for_top_movers(db: Session, limit: int = 30) -> int:
+    """Fetch news for stocks with highest volume/change today.
+
+    Targets stocks most likely to have relevant news.
+    """
+    from app.models.stock import DailyPrice, Stock
+
+    # Get recent prices sorted by absolute change
+    subq = (
+        db.query(DailyPrice.ticker)
+        .filter(DailyPrice.change_pct.isnot(None))
+        .order_by(DailyPrice.date.desc())
+        .distinct()
+        .limit(limit)
+    )
+    tickers = [r[0] for r in subq.all()]
+
+    total = 0
+    for ticker in tickers:
+        try:
+            articles = fetch_news_for_ticker(db, ticker, pages=1)
+            total += len(articles)
+        except Exception as e:
+            logger.error("Failed to fetch news for %s: %s", ticker, e)
+        time.sleep(settings.SCRAPE_DELAY_SECONDS)
+
+    logger.info("Fetched %d news articles for %d stocks", total, len(tickers))
+    return total
+
+
 def get_news(
     db: Session,
     ticker: str | None = None,

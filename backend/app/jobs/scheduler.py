@@ -54,6 +54,13 @@ def job_fetch_disclosures():
     _job_wrapper("fetch_disclosures", fetch_disclosures_by_date, date.today())
 
 
+def job_fetch_news():
+    """Fetch news for top movers (high volume/change stocks)."""
+    from app.services.news_service import fetch_news_for_top_movers
+
+    _job_wrapper("fetch_news", fetch_news_for_top_movers)
+
+
 def init_scheduler():
     """Initialize and start the scheduler with all jobs."""
     if scheduler.running:
@@ -91,6 +98,14 @@ def init_scheduler():
         job_fetch_disclosures,
         CronTrigger(hour=19, minute=30, day_of_week="mon-fri"),
         id="fetch_disclosures",
+        replace_existing=True,
+    )
+
+    # 20:00 KST - Fetch news for top movers
+    scheduler.add_job(
+        job_fetch_news,
+        CronTrigger(hour=20, minute=0, day_of_week="mon-fri"),
+        id="fetch_news",
         replace_existing=True,
     )
 

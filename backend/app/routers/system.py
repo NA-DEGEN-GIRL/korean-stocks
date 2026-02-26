@@ -18,7 +18,7 @@ def verify_admin(x_admin_key: str = Header()):
 from app.models.stock import DailyPrice, MarketFundamentals, Stock
 from app.models.disclosure import DartDisclosure
 from app.models.news import NewsArticle
-from app.jobs.scheduler import get_scheduler_status, job_sync_stocks, job_fetch_daily_prices, job_detect_volume_spikes, job_fetch_disclosures
+from app.jobs.scheduler import get_scheduler_status, job_sync_stocks, job_fetch_daily_prices, job_detect_volume_spikes, job_fetch_disclosures, job_fetch_news
 from app.services.market_data import (
     backfill_prices,
     fetch_daily_prices,
@@ -82,11 +82,40 @@ def _run_daily_prices(target_date: date, market: str):
 
 
 def _run_backfill(start_date: date, end_date: date, market: str):
-    """Background task: backfill prices."""
+    """Background task: backfill prices, disclosures, and news."""
+    from app.services.dart_service import fetch_disclosures_for_ticker
+    from app.services.news_service import fetch_news_for_ticker
+    import time
+
     db = SessionLocal()
     try:
+        # 1) Backfill prices
         results = backfill_prices(db, start_date, end_date, market)
-        logger.info(f"Background backfill complete: {results}")
+        logger.info(f"Background backfill prices complete: {results}")
+
+        # 2) Backfill disclosures & news for all active stocks
+        stocks = db.query(Stock).filter(Stock.is_active.is_(True)).all()
+        disc_count = 0
+        news_count = 0
+
+        for i, stock in enumerate(stocks):
+            try:
+                discs = fetch_disclosures_for_ticker(db, stock.ticker, start_date, end_date)
+                disc_count += len(discs)
+            except Exception as e:
+                logger.error(f"Disclosure backfill failed for {stock.ticker}: {e}")
+
+            try:
+                articles = fetch_news_for_ticker(db, stock.ticker, pages=1)
+                news_count += len(articles)
+            except Exception as e:
+                logger.error(f"News backfill failed for {stock.ticker}: {e}")
+
+            if (i + 1) % 50 == 0:
+                logger.info(f"Backfill disclosures/news progress: {i + 1}/{len(stocks)}")
+            time.sleep(0.5)
+
+        logger.info(f"Background backfill complete: prices={results}, disclosures={disc_count}, news={news_count}")
     except Exception as e:
         logger.error(f"Background backfill failed: {e}")
     finally:
@@ -146,6 +175,7 @@ JOB_MAP = {
     "fetch_daily_prices": job_fetch_daily_prices,
     "detect_volume_spikes": job_detect_volume_spikes,
     "fetch_disclosures": job_fetch_disclosures,
+    "fetch_news": job_fetch_news,
 }
 
 
