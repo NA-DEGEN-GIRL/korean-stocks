@@ -1,0 +1,13 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+sqlalchemy==2.0.35
+pydantic-settings==2.5.0
+pykrx==1.0.45
+finance-datareader==0.9.102
+opendartreader==0.2.1
+beautifulsoup4==4.12.3
+requests==2.32.3
+apscheduler==3.10.4
+pandas==2.2.2
+lxml==5.3.0
+aiofiles==24.1.0
