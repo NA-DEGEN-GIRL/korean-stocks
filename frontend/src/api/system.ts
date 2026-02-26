@@ -34,21 +34,26 @@ export async function fetchSchedulerStatus(): Promise<SchedulerStatus> {
   return data
 }
 
-export async function runJob(jobName: string): Promise<{ status: string; job: string }> {
-  const { data } = await api.post(`/system/run-job/${jobName}`)
+function adminHeaders(key: string) {
+  return { headers: { 'X-Admin-Key': key } }
+}
+
+export async function runJob(jobName: string, adminKey: string): Promise<{ status: string; job: string }> {
+  const { data } = await api.post(`/system/run-job/${jobName}`, null, adminHeaders(adminKey))
   return data
 }
 
-export async function triggerSyncStocks(): Promise<void> {
-  await api.post('/system/sync-stocks')
+export async function triggerSyncStocks(adminKey: string): Promise<void> {
+  await api.post('/system/sync-stocks', null, adminHeaders(adminKey))
 }
 
-export async function triggerFetchPrices(): Promise<void> {
-  await api.post('/system/fetch-prices')
+export async function triggerFetchPrices(adminKey: string): Promise<void> {
+  await api.post('/system/fetch-prices', null, adminHeaders(adminKey))
 }
 
-export async function triggerBackfill(startDate: string, endDate?: string): Promise<void> {
+export async function triggerBackfill(startDate: string, adminKey: string, endDate?: string): Promise<void> {
   await api.post('/system/backfill', null, {
     params: { start_date: startDate, end_date: endDate },
+    ...adminHeaders(adminKey),
   })
 }

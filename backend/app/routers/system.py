@@ -3,11 +3,18 @@
 import logging
 from datetime import date, timedelta
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db, SessionLocal
+
+
+def verify_admin(x_admin_key: str = Header()):
+    """Verify admin key from request header."""
+    if not settings.ADMIN_KEY or x_admin_key != settings.ADMIN_KEY:
+        raise HTTPException(status_code=403, detail="Invalid admin key")
 from app.models.stock import DailyPrice, MarketFundamentals, Stock
 from app.models.disclosure import DartDisclosure
 from app.models.news import NewsArticle
@@ -86,7 +93,7 @@ def _run_backfill(start_date: date, end_date: date, market: str):
         db.close()
 
 
-@router.post("/sync-stocks")
+@router.post("/sync-stocks", dependencies=[Depends(verify_admin)])
 def trigger_sync_stocks(
     background_tasks: BackgroundTasks,
     market: str = Query("ALL", description="KOSPI, KOSDAQ, or ALL"),
@@ -96,7 +103,7 @@ def trigger_sync_stocks(
     return {"status": "started", "job": "sync_stocks", "market": market}
 
 
-@router.post("/fetch-prices")
+@router.post("/fetch-prices", dependencies=[Depends(verify_admin)])
 def trigger_fetch_prices(
     background_tasks: BackgroundTasks,
     target_date: str | None = Query(None, description="Date in YYYY-MM-DD format, defaults to today"),
@@ -108,7 +115,7 @@ def trigger_fetch_prices(
     return {"status": "started", "job": "fetch_prices", "date": str(d), "market": market}
 
 
-@router.post("/backfill")
+@router.post("/backfill", dependencies=[Depends(verify_admin)])
 def trigger_backfill(
     background_tasks: BackgroundTasks,
     start_date: str = Query(description="Start date YYYY-MM-DD"),
@@ -142,7 +149,7 @@ JOB_MAP = {
 }
 
 
-@router.post("/run-job/{job_name}")
+@router.post("/run-job/{job_name}", dependencies=[Depends(verify_admin)])
 def run_job(
     job_name: str,
     background_tasks: BackgroundTasks,

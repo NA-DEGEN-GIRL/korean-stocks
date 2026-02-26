@@ -24,37 +24,51 @@ export default function Settings() {
 
   const [backfillStart, setBackfillStart] = useState('2025-12-01')
   const [jobMsg, setJobMsg] = useState<string | null>(null)
+  const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem('adminKey') || '')
+  const [authError, setAuthError] = useState(false)
+
+  const saveAdminKey = (key: string) => {
+    setAdminKey(key)
+    setAuthError(false)
+    sessionStorage.setItem('adminKey', key)
+  }
+
+  const onAuthError = () => { setAuthError(true); setJobMsg(null) }
 
   const jobMutation = useMutation({
-    mutationFn: (jobName: string) => runJob(jobName),
+    mutationFn: (jobName: string) => runJob(jobName, adminKey),
     onSuccess: (data) => {
       setJobMsg(`${data.job} 시작됨`)
       setTimeout(() => { setJobMsg(null); refetchStatus() }, 5000)
     },
+    onError: onAuthError,
   })
 
   const syncMutation = useMutation({
-    mutationFn: triggerSyncStocks,
+    mutationFn: () => triggerSyncStocks(adminKey),
     onSuccess: () => {
       setJobMsg('종목 동기화 시작됨')
       setTimeout(() => { setJobMsg(null); refetchStatus() }, 5000)
     },
+    onError: onAuthError,
   })
 
   const pricesMutation = useMutation({
-    mutationFn: triggerFetchPrices,
+    mutationFn: () => triggerFetchPrices(adminKey),
     onSuccess: () => {
       setJobMsg('가격 수집 시작됨')
       setTimeout(() => { setJobMsg(null); refetchStatus() }, 5000)
     },
+    onError: onAuthError,
   })
 
   const backfillMutation = useMutation({
-    mutationFn: () => triggerBackfill(backfillStart),
+    mutationFn: () => triggerBackfill(backfillStart, adminKey),
     onSuccess: () => {
       setJobMsg('백필 시작됨 (시간이 걸릴 수 있습니다)')
       setTimeout(() => { setJobMsg(null); refetchStatus() }, 10000)
     },
+    onError: onAuthError,
   })
 
   return (
@@ -62,6 +76,21 @@ export default function Settings() {
       <div className="flex items-center gap-2 mb-6">
         <SettingsIcon className="w-6 h-6 text-gray-600" />
         <h1 className="text-2xl font-bold text-gray-900">설정</h1>
+      </div>
+
+      {/* 관리자 인증 */}
+      <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center gap-3">
+        <label className="text-sm font-medium text-gray-600 whitespace-nowrap">관리자 키</label>
+        <input
+          type="password"
+          value={adminKey}
+          onChange={(e) => saveAdminKey(e.target.value)}
+          placeholder="ADMIN_KEY 입력"
+          className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {authError && (
+          <span className="text-xs text-red-500 whitespace-nowrap">키가 올바르지 않습니다</span>
+        )}
       </div>
 
       {/* 알림 */}
