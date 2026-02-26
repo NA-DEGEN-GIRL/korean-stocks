@@ -251,9 +251,10 @@ export default function StockDetail() {
                     <ExternalLink className="w-3.5 h-3.5 text-gray-300 shrink-0 mt-0.5" />
                   </a>
                   {d.ai_summary && (
-                    <p className="mt-1.5 text-xs text-gray-600 leading-relaxed bg-gray-50 rounded p-1.5">
-                      {d.ai_summary}
-                    </p>
+                    <div className="mt-1.5 text-xs leading-relaxed bg-violet-50 border border-violet-100 rounded p-2">
+                      <span className="text-violet-500 font-semibold">AI 분석</span>
+                      <p className="text-gray-700 mt-0.5">{d.ai_summary}</p>
+                    </div>
                   )}
                 </div>
               ))}

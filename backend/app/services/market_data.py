@@ -87,18 +87,27 @@ def sync_stock_list(db: Session, market: str = "ALL") -> int:
                 else:
                     db.add(DailyPrice(ticker=ticker, date=today, **price_data))
 
-            # Store market cap as fundamentals
+            # Store market cap and fundamentals
             marcap = int(row.get("Marcap", 0)) if row.get("Marcap") else None
             if marcap and marcap > 0:
+                fund_data = {
+                    "market_cap": marcap,
+                    "per": float(row["PER"]) if row.get("PER") and row["PER"] != 0 else None,
+                    "pbr": float(row["PBR"]) if row.get("PBR") and row["PBR"] != 0 else None,
+                    "eps": int(row["EPS"]) if row.get("EPS") and row["EPS"] != 0 else None,
+                    "div_yield": float(row["DIV"]) if row.get("DIV") and row["DIV"] != 0 else None,
+                }
                 existing_fund = (
                     db.query(MarketFundamentals)
                     .filter(MarketFundamentals.ticker == ticker, MarketFundamentals.date == today)
                     .first()
                 )
                 if existing_fund:
-                    existing_fund.market_cap = marcap
+                    for k, v in fund_data.items():
+                        if v is not None:
+                            setattr(existing_fund, k, v)
                 else:
-                    db.add(MarketFundamentals(ticker=ticker, date=today, market_cap=marcap))
+                    db.add(MarketFundamentals(ticker=ticker, date=today, **fund_data))
 
             count += 1
 
