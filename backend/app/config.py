@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     DART_API_KEY: str = ""
     DATABASE_URL: str = "sqlite:///./data/stocks.db"
-    CORS_ORIGINS: str = "http://localhost:5173"
+    CORS_ORIGINS: str = "http://localhost:5173,https://korean-stocks.vercel.app"
     LOG_LEVEL: str = "INFO"
     SCRAPE_DELAY_SECONDS: float = 1.5
     PYKRX_DELAY_SECONDS: float = 1.0
