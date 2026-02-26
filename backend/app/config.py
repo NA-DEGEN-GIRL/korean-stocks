@@ -6,7 +6,15 @@ class Settings(BaseSettings):
 
     DART_API_KEY: str = ""
     ADMIN_KEY: str = ""
+    DATA_DIR: str = ""
     DATABASE_URL: str = "sqlite:///./data/stocks.db"
+
+    @property
+    def effective_database_url(self) -> str:
+        """Use DATA_DIR if set, otherwise fall back to DATABASE_URL."""
+        if self.DATA_DIR:
+            return f"sqlite:///{self.DATA_DIR}/stocks.db"
+        return self.DATABASE_URL
     CORS_ORIGINS: str = "http://localhost:5173,https://korean-stocks.vercel.app"
     LOG_LEVEL: str = "INFO"
     SCRAPE_DELAY_SECONDS: float = 1.5

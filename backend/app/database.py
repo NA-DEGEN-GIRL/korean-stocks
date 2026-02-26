@@ -5,9 +5,11 @@ from collections.abc import Generator
 from app.config import settings
 
 
+db_url = settings.effective_database_url
+
 engine = create_engine(
-    settings.DATABASE_URL,
-    connect_args={"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {},
+    db_url,
+    connect_args={"check_same_thread": False} if db_url.startswith("sqlite") else {},
     echo=False,
 )
 
@@ -15,7 +17,7 @@ engine = create_engine(
 @event.listens_for(engine, "connect")
 def set_sqlite_wal_mode(dbapi_connection, connection_record):
     """Enable WAL mode for SQLite to allow concurrent reads during writes."""
-    if settings.DATABASE_URL.startswith("sqlite"):
+    if db_url.startswith("sqlite"):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA synchronous=NORMAL")
