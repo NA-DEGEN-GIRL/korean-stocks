@@ -169,34 +169,44 @@ def _build_summary(
     sector_info: dict,
 ) -> str:
     """Generate a human-readable summary of why the stock is moving."""
-    parts = []
+    lines = []
 
     change = price_info.get("change_pct")
     if change is not None:
         direction = "상승" if change > 0 else "하락"
-        parts.append(f"{name}이(가) {abs(change):.2f}% {direction}했습니다.")
-
-    vol_ratio = price_info.get("volume_ratio")
-    if vol_ratio and vol_ratio > 1.5:
-        parts.append(f"거래량이 평소 대비 {vol_ratio:.1f}배로 급증했습니다.")
+        vol_ratio = price_info.get("volume_ratio")
+        headline = f"{name}이(가) {abs(change):.2f}% {direction}했습니다."
+        if vol_ratio and vol_ratio > 1.5:
+            headline += f" 거래량은 평소 대비 {vol_ratio:.1f}배 급증했습니다."
+        lines.append(headline)
 
     if disclosures:
-        key_types = [d.report_nm for d in disclosures[:3] if d.report_nm]
-        if key_types:
-            parts.append(f"최근 공시: {', '.join(key_types[:3])}")
+        key_reports = [d.report_nm.strip() for d in disclosures[:3] if d.report_nm]
+        if key_reports:
+            lines.append("")
+            lines.append("주요 공시:")
+            for r in key_reports:
+                lines.append(f"  - {r}")
 
     if news:
         titles = [n.title for n in news[:3] if n.title]
         if titles:
-            parts.append(f"관련 뉴스: {titles[0]}")
+            lines.append("")
+            lines.append("관련 뉴스:")
+            for t in titles:
+                lines.append(f"  - {t}")
 
     if sector_info.get("is_sector_wide"):
-        parts.append(
-            f"동일 섹터({sector_info['sector']}) 전체가 평균 {sector_info['sector_avg_change']:.1f}% 상승 중입니다."
+        lines.append("")
+        lines.append(
+            f"동일 섹터({sector_info['sector']}) 전체가 평균 "
+            f"{sector_info['sector_avg_change']:.1f}% 상승 중으로, 섹터 전반의 상승 흐름입니다."
         )
     elif sector_info.get("sector") and sector_info.get("sector_avg_change") is not None:
-        parts.append(
-            f"동일 섹터({sector_info['sector']}) 평균 {sector_info['sector_avg_change']:.1f}% 대비 개별 종목 움직임입니다."
+        lines.append("")
+        lines.append(
+            f"동일 섹터({sector_info['sector']}) 평균 {sector_info['sector_avg_change']:.1f}% 대비 "
+            f"개별 종목의 차별적 움직임입니다."
         )
 
-    return " ".join(parts) if parts else f"{name}의 변동 원인을 파악할 수 없습니다."
+    return "\n".join(lines) if lines else f"{name}의 변동 원인을 파악할 수 없습니다."

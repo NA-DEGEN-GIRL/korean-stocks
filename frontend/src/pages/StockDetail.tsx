@@ -343,7 +343,7 @@ function WhyMovingPanel({ data, isLoading }: { data: WhyMovingResponse; isLoadin
       </div>
 
       {/* 요약 */}
-      <p className="text-sm text-gray-800 mb-4 leading-relaxed">{data.summary}</p>
+      <pre className="text-sm text-gray-800 mb-4 leading-relaxed whitespace-pre-wrap font-sans">{data.summary}</pre>
 
       {/* 핵심 지표 */}
       <div className="flex gap-3 flex-wrap mb-4">
