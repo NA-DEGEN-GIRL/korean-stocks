@@ -8,6 +8,9 @@ export interface DisclosureItem {
   rcept_dt: string | null
   report_type: string | null
   disclosure_url: string | null
+  ai_summary: string | null
+  ai_impact: string | null
+  ai_analyzed_at: string | null
 }
 
 export interface DisclosureListResponse {

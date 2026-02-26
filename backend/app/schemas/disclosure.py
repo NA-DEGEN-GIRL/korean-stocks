@@ -13,6 +13,9 @@ class DisclosureItem(BaseModel):
     rcept_dt: date | None = None
     report_type: str | None = None
     disclosure_url: str | None = None
+    ai_summary: str | None = None
+    ai_impact: str | None = None
+    ai_analyzed_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

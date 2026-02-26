@@ -220,24 +220,42 @@ export default function StockDetail() {
           ) : disclosuresData && disclosuresData.items.length > 0 ? (
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {disclosuresData.items.map((d) => (
-                <a
+                <div
                   key={d.rcept_no}
-                  href={d.disclosure_url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-2 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
+                  className="p-2 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
                 >
-                  <div className="flex items-start gap-2">
+                  <a
+                    href={d.disclosure_url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start gap-2"
+                  >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-800 truncate">{d.report_nm}</p>
+                      <div className="flex items-center gap-1.5">
+                        {d.ai_impact && (
+                          <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${
+                            d.ai_impact === '긍정' ? 'bg-green-100 text-green-700' :
+                            d.ai_impact === '부정' ? 'bg-red-100 text-red-700' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                            {d.ai_impact}
+                          </span>
+                        )}
+                        <p className="text-sm text-gray-800 truncate">{d.report_nm}</p>
+                      </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-gray-400">{d.rcept_dt}</span>
                         <span className="text-xs text-gray-400">{d.flr_nm}</span>
                       </div>
                     </div>
                     <ExternalLink className="w-3.5 h-3.5 text-gray-300 shrink-0 mt-0.5" />
-                  </div>
-                </a>
+                  </a>
+                  {d.ai_summary && (
+                    <p className="mt-1.5 text-xs text-gray-600 leading-relaxed bg-gray-50 rounded p-1.5">
+                      {d.ai_summary}
+                    </p>
+                  )}
+                </div>
               ))}
             </div>
           ) : (

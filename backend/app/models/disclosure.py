@@ -22,6 +22,9 @@ class DartDisclosure(Base):
     report_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
     disclosure_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     fetched_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_impact: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    ai_analyzed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     def __repr__(self) -> str:
         return f"<DartDisclosure rcept_no={self.rcept_no} corp_name={self.corp_name}>"
