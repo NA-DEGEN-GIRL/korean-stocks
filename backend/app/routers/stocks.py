@@ -56,7 +56,7 @@ def list_stocks(
                 is_active=stock.is_active,
                 latest_price=latest_price_row.close if latest_price_row else None,
                 change_pct=latest_price_row.change_pct if latest_price_row else None,
-                volume=latest_price_row.volume if latest_price_row else None,
+                trading_value=latest_price_row.trading_value if latest_price_row else None,
             )
         )
 

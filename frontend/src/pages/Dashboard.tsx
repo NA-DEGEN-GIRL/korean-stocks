@@ -5,7 +5,7 @@ import { Search, TrendingUp, TrendingDown, BarChart3, ArrowRight, ChevronUp, Che
 import { useStocks } from '../hooks/useStocks'
 import { fetchTopGainers, fetchTopLosers, fetchVolumeSpikes } from '../api/screener'
 
-type SortKey = 'ticker' | 'name' | 'latest_price' | 'change_pct' | 'volume'
+type SortKey = 'ticker' | 'name' | 'latest_price' | 'change_pct' | 'trading_value'
 type SortDir = 'asc' | 'desc'
 
 export default function Dashboard() {
@@ -210,11 +210,12 @@ export default function Dashboard() {
   )
 }
 
-function formatVolume(v: number | null | undefined): string {
+function formatTradingValue(v: number | null | undefined): string {
   if (v == null) return '-'
-  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M'
-  if (v >= 1_000) return (v / 1_000).toFixed(0) + 'K'
-  return v.toLocaleString()
+  if (v >= 1_000_000_000_000) return (v / 1_000_000_000_000).toFixed(1) + '조'
+  if (v >= 100_000_000) return (v / 100_000_000).toFixed(0) + '억'
+  if (v >= 10_000) return (v / 10_000).toFixed(0) + '만'
+  return v.toLocaleString() + '원'
 }
 
 interface SortableTableProps {
@@ -224,7 +225,7 @@ interface SortableTableProps {
     market: string
     latest_price: number | null
     change_pct: number | null
-    volume?: number | null
+    trading_value?: number | null
   }>
   sortKey: SortKey
   sortDir: SortDir
@@ -272,8 +273,8 @@ function SortableTable({ items, sortKey, sortDir, onSort, onRowClick }: Sortable
           <th className={`${thClass} text-right`} onClick={() => onSort('change_pct')}>
             등락률<SortIcon col="change_pct" />
           </th>
-          <th className={`${thClass} text-right`} onClick={() => onSort('volume')}>
-            거래량<SortIcon col="volume" />
+          <th className={`${thClass} text-right`} onClick={() => onSort('trading_value')}>
+            거래대금<SortIcon col="trading_value" />
           </th>
         </tr>
       </thead>
@@ -319,7 +320,7 @@ function SortableTable({ items, sortKey, sortDir, onSort, onRowClick }: Sortable
               )}
             </td>
             <td className="px-4 py-3 text-sm text-right font-mono text-gray-600">
-              {formatVolume(stock.volume)}
+              {formatTradingValue(stock.trading_value)}
             </td>
           </tr>
         ))}
