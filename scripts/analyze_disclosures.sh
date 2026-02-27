@@ -1,6 +1,6 @@
 #!/bin/bash
 # 미분석 공시를 Claude Code MCP를 통해 자동 분석하는 스크립트
-# crontab 예시: 30 20 * * 1-5 /root/stocks/scripts/analyze_disclosures.sh >> /root/stocks/scripts/analyze.log 2>&1
+# crontab: */10 * * * * /root/stocks/scripts/analyze_disclosures.sh >> /root/stocks/scripts/analyze.log 2>&1
 
 export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/ 2>/dev/null | tail -1)/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 

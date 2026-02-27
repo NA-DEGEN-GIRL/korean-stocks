@@ -148,9 +148,11 @@ def get_disclosures(
     ticker: str | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
+    ai_impact: str | None = None,
+    search: str | None = None,
     limit: int = 50,
 ) -> list[DartDisclosure]:
-    """Read disclosures from DB, optionally filtered by ticker and date range."""
+    """Read disclosures from DB, optionally filtered by ticker, date range, ai_impact, and search."""
     stmt = select(DartDisclosure).order_by(DartDisclosure.rcept_dt.desc())
 
     if ticker:
@@ -159,6 +161,17 @@ def get_disclosures(
         stmt = stmt.where(DartDisclosure.rcept_dt >= start_date)
     if end_date:
         stmt = stmt.where(DartDisclosure.rcept_dt <= end_date)
+    if ai_impact:
+        if ai_impact == "미분석":
+            stmt = stmt.where(DartDisclosure.ai_summary.is_(None))
+        else:
+            stmt = stmt.where(DartDisclosure.ai_impact == ai_impact)
+    if search:
+        pattern = f"%{search}%"
+        stmt = stmt.where(
+            (DartDisclosure.ticker.ilike(pattern))
+            | (DartDisclosure.corp_name.ilike(pattern))
+        )
 
     stmt = stmt.limit(limit)
     return list(db.execute(stmt).scalars().all())

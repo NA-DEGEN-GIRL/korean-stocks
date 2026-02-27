@@ -1,10 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, Search, TrendingUp, BarChart3, Settings } from 'lucide-react'
+import { LayoutDashboard, Search, TrendingUp, BarChart3, FileText, Settings } from 'lucide-react'
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: '대시보드' },
   { to: '/screener', icon: Search, label: '종목 스크리너' },
   { to: '/weekly', icon: TrendingUp, label: '주간 발굴' },
+  { to: '/disclosures', icon: FileText, label: '공시' },
   { to: '/settings', icon: Settings, label: '설정' },
 ]
 

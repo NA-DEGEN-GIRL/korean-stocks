@@ -29,11 +29,16 @@ def list_disclosures(
     ticker: str | None = Query(None),
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
+    ai_impact: str | None = Query(None, description="Filter by AI impact: 긍정, 부정, 중립, 미분석"),
+    search: str | None = Query(None, description="Search by ticker or corp_name"),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
 ) -> DisclosureListResponse:
     """List disclosures from DB with optional filters."""
-    items = get_disclosures(db, ticker=ticker, start_date=start_date, end_date=end_date, limit=limit)
+    items = get_disclosures(
+        db, ticker=ticker, start_date=start_date, end_date=end_date,
+        ai_impact=ai_impact, search=search, limit=limit,
+    )
     return DisclosureListResponse(
         items=[DisclosureItem.model_validate(d) for d in items],
         total=len(items),
