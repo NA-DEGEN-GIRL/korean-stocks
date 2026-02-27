@@ -69,7 +69,15 @@ def init_scheduler():
 
     # Weekdays only (mon-fri)
 
-    # 18:30 KST - Sync stock list & fetch daily prices
+    # 09:30~15:30 KST - Sync during market hours (every 30 min)
+    scheduler.add_job(
+        job_sync_stocks,
+        CronTrigger(hour="9-15", minute="0,30", day_of_week="mon-fri"),
+        id="sync_stocks_market_hours",
+        replace_existing=True,
+    )
+
+    # 18:30 KST - Final sync after market close
     scheduler.add_job(
         job_sync_stocks,
         CronTrigger(hour=18, minute=30, day_of_week="mon-fri"),

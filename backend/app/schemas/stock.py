@@ -13,6 +13,7 @@ class StockResponse(StockBase):
     is_active: bool
     latest_price: int | None = None
     change_pct: float | None = None
+    volume: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,13 +1,18 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Search, TrendingUp, TrendingDown, BarChart3, ArrowRight } from 'lucide-react'
+import { Search, TrendingUp, TrendingDown, BarChart3, ArrowRight, ChevronUp, ChevronDown } from 'lucide-react'
 import { useStocks } from '../hooks/useStocks'
 import { fetchTopGainers, fetchTopLosers, fetchVolumeSpikes } from '../api/screener'
+
+type SortKey = 'ticker' | 'name' | 'latest_price' | 'change_pct' | 'volume'
+type SortDir = 'asc' | 'desc'
 
 export default function Dashboard() {
   const [search, setSearch] = useState('')
   const [market, setMarket] = useState<string>('ALL')
+  const [sortKey, setSortKey] = useState<SortKey>('change_pct')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
   const navigate = useNavigate()
 
   const { data, isLoading, error } = useStocks({
@@ -178,67 +183,20 @@ export default function Dashboard() {
               {search ? '검색 결과가 없습니다.' : '종목 데이터가 없습니다. 먼저 데이터를 수집해주세요.'}
             </div>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
-                  <th className="px-4 py-3 font-medium">종목코드</th>
-                  <th className="px-4 py-3 font-medium">종목명</th>
-                  <th className="px-4 py-3 font-medium">시장</th>
-                  <th className="px-4 py-3 font-medium text-right">현재가</th>
-                  <th className="px-4 py-3 font-medium text-right">등락률</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.map((stock) => (
-                  <tr
-                    key={stock.ticker}
-                    onClick={() => navigate(`/stocks/${stock.ticker}`)}
-                    className="border-b border-gray-50 hover:bg-blue-50 cursor-pointer transition-colors"
-                  >
-                    <td className="px-4 py-3 text-sm font-mono text-gray-600">
-                      {stock.ticker}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      {stock.name}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-block px-2 py-0.5 text-xs rounded-full ${
-                          stock.market === 'KOSPI'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-purple-100 text-purple-700'
-                        }`}
-                      >
-                        {stock.market}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right font-mono">
-                      {stock.latest_price
-                        ? stock.latest_price.toLocaleString('ko-KR') + '원'
-                        : '-'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right font-mono">
-                      {stock.change_pct != null ? (
-                        <span
-                          className={
-                            stock.change_pct > 0
-                              ? 'text-red-600'
-                              : stock.change_pct < 0
-                                ? 'text-blue-600'
-                                : 'text-gray-500'
-                          }
-                        >
-                          {stock.change_pct > 0 ? '+' : ''}
-                          {stock.change_pct.toFixed(2)}%
-                        </span>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <SortableTable
+              items={data.items}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={(key) => {
+                if (key === sortKey) {
+                  setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+                } else {
+                  setSortKey(key)
+                  setSortDir(key === 'ticker' || key === 'name' ? 'asc' : 'desc')
+                }
+              }}
+              onRowClick={(ticker) => navigate(`/stocks/${ticker}`)}
+            />
           )}
         </div>
 
@@ -249,5 +207,123 @@ export default function Dashboard() {
         )}
       </div>
     </div>
+  )
+}
+
+function formatVolume(v: number | null | undefined): string {
+  if (v == null) return '-'
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M'
+  if (v >= 1_000) return (v / 1_000).toFixed(0) + 'K'
+  return v.toLocaleString()
+}
+
+interface SortableTableProps {
+  items: Array<{
+    ticker: string
+    name: string
+    market: string
+    latest_price: number | null
+    change_pct: number | null
+    volume?: number | null
+  }>
+  sortKey: SortKey
+  sortDir: SortDir
+  onSort: (key: SortKey) => void
+  onRowClick: (ticker: string) => void
+}
+
+function SortableTable({ items, sortKey, sortDir, onSort, onRowClick }: SortableTableProps) {
+  const sorted = useMemo(() => {
+    return [...items].sort((a, b) => {
+      const av = a[sortKey] ?? (sortDir === 'asc' ? Infinity : -Infinity)
+      const bv = b[sortKey] ?? (sortDir === 'asc' ? Infinity : -Infinity)
+      if (typeof av === 'string' && typeof bv === 'string') {
+        return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
+      }
+      return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number)
+    })
+  }, [items, sortKey, sortDir])
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (col !== sortKey) return null
+    return sortDir === 'asc' ? (
+      <ChevronUp className="w-3 h-3 inline ml-0.5" />
+    ) : (
+      <ChevronDown className="w-3 h-3 inline ml-0.5" />
+    )
+  }
+
+  const thClass = 'px-4 py-3 font-medium cursor-pointer hover:text-blue-600 select-none'
+
+  return (
+    <table className="w-full">
+      <thead>
+        <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+          <th className={thClass} onClick={() => onSort('ticker')}>
+            종목코드<SortIcon col="ticker" />
+          </th>
+          <th className={thClass} onClick={() => onSort('name')}>
+            종목명<SortIcon col="name" />
+          </th>
+          <th className="px-4 py-3 font-medium">시장</th>
+          <th className={`${thClass} text-right`} onClick={() => onSort('latest_price')}>
+            현재가<SortIcon col="latest_price" />
+          </th>
+          <th className={`${thClass} text-right`} onClick={() => onSort('change_pct')}>
+            등락률<SortIcon col="change_pct" />
+          </th>
+          <th className={`${thClass} text-right`} onClick={() => onSort('volume')}>
+            거래량<SortIcon col="volume" />
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map((stock) => (
+          <tr
+            key={stock.ticker}
+            onClick={() => onRowClick(stock.ticker)}
+            className="border-b border-gray-50 hover:bg-blue-50 cursor-pointer transition-colors"
+          >
+            <td className="px-4 py-3 text-sm font-mono text-gray-600">{stock.ticker}</td>
+            <td className="px-4 py-3 text-sm font-medium text-gray-900">{stock.name}</td>
+            <td className="px-4 py-3">
+              <span
+                className={`inline-block px-2 py-0.5 text-xs rounded-full ${
+                  stock.market === 'KOSPI'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-purple-100 text-purple-700'
+                }`}
+              >
+                {stock.market}
+              </span>
+            </td>
+            <td className="px-4 py-3 text-sm text-right font-mono">
+              {stock.latest_price ? stock.latest_price.toLocaleString('ko-KR') + '원' : '-'}
+            </td>
+            <td className="px-4 py-3 text-sm text-right font-mono">
+              {stock.change_pct != null ? (
+                <span
+                  className={
+                    stock.change_pct > 0
+                      ? 'text-red-600'
+                      : stock.change_pct < 0
+                        ? 'text-blue-600'
+                        : 'text-gray-500'
+                  }
+                >
+                  {stock.change_pct > 0 ? '+' : ''}
+                  {stock.change_pct.toFixed(2)}%
+                </span>
+              ) : (
+                '-'
+              )}
+            </td>
+            <td className="px-4 py-3 text-sm text-right font-mono text-gray-600">
+              {formatVolume(stock.volume)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
