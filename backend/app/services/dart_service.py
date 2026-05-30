@@ -99,7 +99,7 @@ def fetch_disclosures_by_date(
     date_str = target_date.strftime("%Y-%m-%d")
 
     try:
-        result = dart.list_date(date_str, date_str)
+        result = dart.list(start=date_str, end=date_str)
     except Exception as e:
         logger.error("Failed to fetch DART disclosures for date %s: %s", date_str, e)
         return 0
